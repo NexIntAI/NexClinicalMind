@@ -97,7 +97,7 @@ def run_scan():
     else:
         for f in failures:
             add_output("sentinel", f"❌ FAILED: {f['name']}", "error")
-            add_output("sentinel", f"   Error: {f.get('error','Unknown')}", "error")
+            add_output("sentinel", f"   Error: {f.get('error','Unknown')}", "error-sub")
             prompt = f"""Clinical data pipeline failed.
 Pipeline: {f['name']}
 Error: {f.get('error','Unknown')}
@@ -134,7 +134,7 @@ In 2 sentences: root cause and fastest fix."""
     for m in dbt_results:
         if m["status"] == "error":
             add_output("guardian", f"❌ DBT: {m['model']}", "error")
-            add_output("guardian", f"   {m['error']}", "error")
+            add_output("guardian", f"   {m['error']}", "error-sub")
             violations.append({"source": "dbt", "detail": m["error"], "severity": "HIGH", "cdisc_domain": "AE"})
             scan_state["audit_log"].append({
                 "timestamp": datetime.datetime.utcnow().strftime("%H:%M:%S"),
@@ -149,7 +149,7 @@ In 2 sentences: root cause and fastest fix."""
     for c in dq_results:
         if c["status"] == "FAIL":
             add_output("guardian", f"❌ DATA FAIL: {c['table']}", "error")
-            add_output("guardian", f"   {c['violation']}", "error")
+            add_output("guardian", f"   {c['violation']}", "error-sub")
             violations.append({
                 "source": "snowflake",
                 "table": c["table"],
