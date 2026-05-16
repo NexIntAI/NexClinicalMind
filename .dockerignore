@@ -1,0 +1,11 @@
+.env
+__pycache__
+*.pyc
+*.pyo
+audit_trail.json
+mcp_audit_trail.json
+dashboard.html
+*.md
+.git
+.gitignore
+node_modules

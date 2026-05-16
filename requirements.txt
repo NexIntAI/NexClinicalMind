@@ -1,0 +1,9 @@
+google-adk
+google-genai
+mcp
+flask
+flask-cors
+httpx
+python-dotenv
+uvicorn
+starlette

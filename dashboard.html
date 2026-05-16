@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexClinicalMind — Live Dashboard</title>
+<style>
+:root {
+  --navy:      #0D1B3E;
+  --teal:      #00A896;
+  --teal-dark: #007A6E;
+  --teal-light:#E1F5EE;
+  --bg:        #F0F4F8;
+  --border:    #D1DCE8;
+  --text:      #1A2E50;
+  --muted:     #6B7FA3;
+  --red:       #E63946;
+  --red-light: #FFF5F5;
+  --red-border:#FFCDD2;
+  --amber:     #E07800;
+  --amber-light:#FFF8F0;
+  --amber-border:#FFD9A8;
+  --green:     #008C60;
+  --green-light:#F0FDF8;
+  --green-border:#A7F3D0;
+  --ai:        #5340B8;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Segoe UI',sans-serif; min-height:100vh; }
+
+/* ── HEADER ─────────────────────────────────────────── */
+header { background:#fff; border-bottom:2px solid var(--teal); padding:14px 28px; display:flex; align-items:center; justify-content:space-between; }
+.logo { display:flex; align-items:center; gap:10px; }
+.logo-dot { width:9px; height:9px; border-radius:50%; background:var(--teal); animation:pulse 2s infinite; }
+.logo h1 { font-size:19px; font-weight:700; color:var(--navy); }
+.logo h1 span { color:var(--teal); }
+.logo p { font-size:11px; color:var(--muted); margin-top:1px; }
+.header-right { display:flex; align-items:center; gap:12px; }
+.badge { background:#EEF2F7; border:1px solid var(--border); color:var(--navy); padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+#scan-mode { background:#F0F4F8; border:1px solid var(--border); color:var(--navy); padding:7px 12px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; }
+#scan-btn { background:var(--teal); color:#fff; border:none; padding:9px 22px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; transition:background 0.2s; }
+#scan-btn:hover { background:var(--teal-dark); }
+#scan-btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+/* ── SUMMARY BAR ────────────────────────────────────── */
+.summary-bar { display:grid; grid-template-columns:repeat(4,1fr); padding:16px 28px; background:#fff; border-bottom:1px solid var(--border); }
+.stat { text-align:center; }
+.stat-val { font-size:26px; font-weight:800; color:var(--teal); }
+.stat-val.red   { color:var(--red); }
+.stat-val.amber { color:var(--amber); }
+.stat-val.green { color:var(--green); }
+.stat-label { font-size:10px; color:var(--muted); margin-top:3px; text-transform:uppercase; letter-spacing:1px; }
+
+/* ── STATUS BAR ─────────────────────────────────────── */
+.status-bar { padding:7px 28px; background:#F8FAFC; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); }
+.status-dot { width:7px; height:7px; border-radius:50%; background:var(--muted); flex-shrink:0; }
+.status-dot.running  { background:var(--teal); animation:pulse 1s infinite; }
+.status-dot.complete { background:var(--green); }
+
+/* ── LAYOUT ─────────────────────────────────────────── */
+.page-grid { display:grid; grid-template-columns:1fr 340px; gap:0; min-height:calc(100vh - 120px); }
+
+/* LEFT: agent column */
+.agents-col { padding:18px 20px 18px 28px; display:flex; flex-direction:column; gap:10px; border-right:1px solid var(--border); }
+
+/* RIGHT: sidebar */
+.sidebar { padding:18px 28px 18px 20px; display:flex; flex-direction:column; gap:14px; background:#FAFBFC; }
+
+/* ── SUBMISSION BANNER ──────────────────────────────── */
+.submission-banner { border-radius:10px; padding:14px 18px; display:flex; align-items:center; justify-content:space-between; border:1px solid var(--border); background:#fff; }
+.submission-banner.hold  { background:var(--red-light);   border-color:var(--red-border); }
+.submission-banner.ready { background:var(--green-light);  border-color:var(--green-border); }
+.sub-left h3 { font-size:14px; font-weight:700; color:var(--navy); }
+.sub-left p  { font-size:11px; color:var(--muted); margin-top:3px; }
+.sub-tag { font-size:12px; font-weight:800; padding:4px 14px; border-radius:7px; white-space:nowrap; }
+.sub-tag.hold  { background:rgba(230,57,70,0.12); color:var(--red); }
+.sub-tag.ready { background:rgba(0,140,96,0.12);  color:var(--green); }
+
+/* ── SPEED BANNER ───────────────────────────────────── */
+.speed-banner { display:none; border-radius:10px; background:#fff; border:1px solid var(--border); padding:14px 18px; }
+.speed-banner.visible { display:block; }
+.speed-item { padding:8px 0; }
+.speed-item + .speed-item { border-top:1px solid var(--border); }
+.speed-val { font-size:24px; font-weight:800; color:var(--teal); }
+.speed-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-top:3px; font-weight:600; }
+.speed-sub { font-size:10px; color:var(--muted); margin-top:2px; }
+
+/* ── AGENT CARD ─────────────────────────────────────── */
+.agent-card {
+  background:#fff;
+  border:1.5px solid var(--border);
+  border-radius:10px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  transition:border-color 0.3s, box-shadow 0.3s;
+}
+.agent-card.running {
+  border-color:var(--teal);
+  box-shadow:0 0 0 3px rgba(0,168,150,0.08);
+}
+.agent-card.done-ok   { border-color:var(--green-border); }
+.agent-card.done-warn { border-color:var(--amber-border); }
+
+/* ── AGENT HEADER ───────────────────────────────────── */
+.agent-header {
+  padding:10px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:1px solid var(--border);
+  background:#FAFBFC;
+  transition:background 0.3s;
+}
+.agent-header.running-hdr { background:rgba(0,168,150,0.06); border-bottom-color:#9FE1CB; }
+.agent-header.ok-hdr      { background:var(--teal-light);    border-bottom-color:#9FE1CB; }
+.agent-header.warn-hdr    { background:var(--amber-light);   border-bottom-color:var(--amber-border); }
+
+.agent-name { display:flex; align-items:center; gap:8px; }
+.agent-icon { width:28px; height:28px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:14px; }
+.agent-title { font-size:12px; font-weight:700; color:var(--navy); }
+.agent-role  { font-size:10px; color:var(--muted); margin-top:1px; }
+
+/* right side of header */
+.agent-right { display:flex; align-items:center; gap:8px; }
+
+/* status badge */
+.agent-status { font-size:10px; padding:3px 8px; border-radius:10px; font-weight:700; white-space:nowrap; }
+.agent-status.idle    { background:#EEF2F7; color:var(--muted); }
+.agent-status.running { background:rgba(0,168,150,0.15); color:var(--teal); animation:pulse 1.5s infinite; }
+.agent-status.done-ok { background:rgba(0,140,96,0.12); color:var(--green); }
+
+/* warning pill — shown only when agent done + has failures */
+.warn-pill {
+  display:none;
+  align-items:center;
+  gap:4px;
+  font-size:10px;
+  font-weight:700;
+  color:var(--amber);
+  background:var(--amber-light);
+  border:1px solid var(--amber-border);
+  padding:3px 8px;
+  border-radius:10px;
+  white-space:nowrap;
+}
+.warn-pill.visible { display:flex; }
+.warn-icon { font-size:11px; }
+
+/* timing badge */
+.agent-time { font-size:10px; color:var(--teal); font-weight:600; padding:2px 7px; background:rgba(0,168,150,0.08); border-radius:10px; display:none; white-space:nowrap; }
+.agent-time.visible { display:inline-block; }
+
+/* ── AGENT OUTPUT ───────────────────────────────────── */
+.agent-output {
+  padding:10px 14px;
+  font-size:11px;
+  font-family:'Cascadia Code','Consolas',monospace;
+  max-height:160px;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  background:#FDFEFF;
+}
+.agent-output::-webkit-scrollbar { width:3px; }
+.agent-output::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+.out-line { line-height:1.5; padding:1px 0; }
+.out-line.info    { color:#4A5568; }
+.out-line.error   { color:var(--red); }
+.out-line.warn    { color:var(--amber); }
+.out-line.success { color:var(--green); }
+.out-line.ai      { color:var(--ai); }
+.idle-text { color:var(--muted); font-style:italic; font-size:11px; }
+
+/* ── AUDIT LOG ──────────────────────────────────────── */
+.audit-card { background:#fff; border:1px solid var(--border); border-radius:10px; overflow:hidden; flex:1; }
+.audit-header { padding:10px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:#FAFBFC; }
+.audit-header h3 { font-size:12px; font-weight:700; color:var(--navy); }
+.audit-header span { font-size:11px; color:var(--muted); }
+.audit-table { width:100%; border-collapse:collapse; font-size:11px; }
+.audit-table th { text-align:left; padding:6px 12px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:1px; font-size:9px; border-bottom:1px solid var(--border); background:#F8FAFC; }
+.audit-table td { padding:5px 12px; border-bottom:1px solid #EEF2F7; }
+.audit-table tr:last-child td { border-bottom:none; }
+.audit-table tr:hover td { background:#F8FAFC; }
+.sev { padding:2px 6px; border-radius:8px; font-weight:600; font-size:9px; }
+.sev.INFO     { background:#EEF2F7; color:var(--muted); }
+.sev.HIGH     { background:rgba(230,57,70,0.12); color:var(--red); }
+.sev.CRITICAL { background:rgba(230,57,70,0.2);  color:#C62828; }
+.sev.WARN     { background:rgba(224,120,0,0.12); color:var(--amber); }
+.audit-scroll { max-height:260px; overflow-y:auto; }
+.audit-scroll::-webkit-scrollbar { width:3px; }
+.audit-scroll::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.spinner { display:inline-block; width:11px; height:11px; border:2px solid #D1DCE8; border-top-color:var(--teal); border-radius:50%; animation:spin 0.8s linear infinite; margin-right:5px; }
+@keyframes spin { to{transform:rotate(360deg)} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <div>
+      <h1>NexClinical<span>Mind</span></h1>
+      <p>Autonomous Clinical Trial Data Compliance Agent</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="badge">Google ADK + Gemini 2.5 Flash</span>
+    <span class="badge">21 CFR Part 11</span>
+    <select id="scan-mode">
+      <option value="violation">🔴 AE Domain Violation</option>
+      <option value="consent">🟡 Patient Consent Violation</option>
+      <option value="clean">✅ Clean Scan</option>
+    </select>
+    <button id="scan-btn" onclick="startScan()">▶ Run Compliance Scan</button>
+  </div>
+</header>
+
+<div class="summary-bar">
+  <div class="stat">
+    <div class="stat-val" id="stat-pipelines">—</div>
+    <div class="stat-label">Pipelines Monitored</div>
+  </div>
+  <div class="stat">
+    <div class="stat-val red" id="stat-failures">—</div>
+    <div class="stat-label">Failures Detected</div>
+  </div>
+  <div class="stat">
+    <div class="stat-val amber" id="stat-violations">—</div>
+    <div class="stat-label">CDISC Violations</div>
+  </div>
+  <div class="stat">
+    <div class="stat-val" id="stat-submission">—</div>
+    <div class="stat-label">Submission Status</div>
+  </div>
+</div>
+
+<div class="status-bar">
+  <div class="status-dot" id="status-dot"></div>
+  <span id="status-text">Ready — click Run Compliance Scan to begin</span>
+</div>
+
+<div class="page-grid">
+
+  <!-- LEFT: 5 agents stacked vertically -->
+  <div class="agents-col">
+
+    <!-- SENTINEL -->
+    <div class="agent-card" id="card-sentinel">
+      <div class="agent-header" id="header-sentinel">
+        <div class="agent-name">
+          <div class="agent-icon" style="background:rgba(0,168,150,0.12)">👁</div>
+          <div><div class="agent-title">SENTINEL</div><div class="agent-role">Pipeline Monitor</div></div>
+        </div>
+        <div class="agent-right">
+          <span class="warn-pill" id="warn-sentinel"><span class="warn-icon">⚠</span><span id="warn-text-sentinel"></span></span>
+          <span class="agent-status idle" id="status-sentinel">IDLE</span>
+          <span class="agent-time" id="time-sentinel"></span>
+        </div>
+      </div>
+      <div class="agent-output" id="output-sentinel"><span class="idle-text">Waiting to monitor pipelines...</span></div>
+    </div>
+
+    <!-- GUARDIAN -->
+    <div class="agent-card" id="card-guardian">
+      <div class="agent-header" id="header-guardian">
+        <div class="agent-name">
+          <div class="agent-icon" style="background:rgba(83,74,183,0.12)">🛡</div>
+          <div><div class="agent-title">GUARDIAN</div><div class="agent-role">CDISC Validator</div></div>
+        </div>
+        <div class="agent-right">
+          <span class="warn-pill" id="warn-guardian"><span class="warn-icon">⚠</span><span id="warn-text-guardian"></span></span>
+          <span class="agent-status idle" id="status-guardian">IDLE</span>
+          <span class="agent-time" id="time-guardian"></span>
+        </div>
+      </div>
+      <div class="agent-output" id="output-guardian"><span class="idle-text">Waiting to validate CDISC standards...</span></div>
+    </div>
+
+    <!-- COUNSEL -->
+    <div class="agent-card" id="card-counsel">
+      <div class="agent-header" id="header-counsel">
+        <div class="agent-name">
+          <div class="agent-icon" style="background:rgba(224,120,0,0.12)">⚖</div>
+          <div><div class="agent-title">COUNSEL</div><div class="agent-role">Regulatory Intelligence</div></div>
+        </div>
+        <div class="agent-right">
+          <span class="warn-pill" id="warn-counsel"><span class="warn-icon">⚠</span><span id="warn-text-counsel"></span></span>
+          <span class="agent-status idle" id="status-counsel">IDLE</span>
+          <span class="agent-time" id="time-counsel"></span>
+        </div>
+      </div>
+      <div class="agent-output" id="output-counsel"><span class="idle-text">Waiting to consult FDA regulations...</span></div>
+    </div>
+
+    <!-- REMEDIATE -->
+    <div class="agent-card" id="card-remediate">
+      <div class="agent-header" id="header-remediate">
+        <div class="agent-name">
+          <div class="agent-icon" style="background:rgba(230,57,70,0.10)">🔧</div>
+          <div><div class="agent-title">REMEDIATE</div><div class="agent-role">Auto-fix & Escalation</div></div>
+        </div>
+        <div class="agent-right">
+          <span class="warn-pill" id="warn-remediate"><span class="warn-icon">⚠</span><span id="warn-text-remediate"></span></span>
+          <span class="agent-status idle" id="status-remediate">IDLE</span>
+          <span class="agent-time" id="time-remediate"></span>
+        </div>
+      </div>
+      <div class="agent-output" id="output-remediate"><span class="idle-text">Waiting to remediate violations...</span></div>
+    </div>
+
+    <!-- PACKAGER -->
+    <div class="agent-card" id="card-packager">
+      <div class="agent-header" id="header-packager">
+        <div class="agent-name">
+          <div class="agent-icon" style="background:rgba(0,140,96,0.12)">📦</div>
+          <div><div class="agent-title">PACKAGER</div><div class="agent-role">Submission Readiness</div></div>
+        </div>
+        <div class="agent-right">
+          <span class="warn-pill" id="warn-packager"><span class="warn-icon">⚠</span><span id="warn-text-packager"></span></span>
+          <span class="agent-status idle" id="status-packager">IDLE</span>
+          <span class="agent-time" id="time-packager"></span>
+        </div>
+      </div>
+      <div class="agent-output" id="output-packager"><span class="idle-text">Waiting to package submission data...</span></div>
+    </div>
+
+  </div><!-- /agents-col -->
+
+  <!-- RIGHT: sidebar -->
+  <div class="sidebar">
+
+    <!-- Submission banner -->
+    <div class="submission-banner" id="submission-banner">
+      <div class="sub-left">
+        <h3>FDA Submission Package</h3>
+        <p>Awaiting scan completion</p>
+      </div>
+      <span class="sub-tag" id="submission-tag">PENDING</span>
+    </div>
+
+    <!-- Speed metrics — appear after scan -->
+    <div class="speed-banner" id="speed-banner">
+      <div class="speed-item">
+        <div class="speed-val" id="speed-detect">—</div>
+        <div class="speed-label">Detection Time</div>
+        <div class="speed-sub">vs 4–6 hour industry average</div>
+      </div>
+      <div class="speed-item">
+        <div class="speed-val" id="speed-total">—</div>
+        <div class="speed-label">Full Scan Time</div>
+        <div class="speed-sub">All 5 agents — end to end</div>
+      </div>
+    </div>
+
+    <!-- Audit log -->
+    <div class="audit-card">
+      <div class="audit-header">
+        <h3>📋 21 CFR Part 11 Audit Trail</h3>
+        <span id="audit-count">0 entries</span>
+      </div>
+      <div class="audit-scroll">
+        <table class="audit-table">
+          <thead>
+            <tr><th>Time</th><th>Agent</th><th>Action</th><th>Sev</th></tr>
+          </thead>
+          <tbody id="audit-tbody">
+            <tr><td colspan="4" style="color:var(--muted);text-align:center;padding:16px;font-size:11px">No entries yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+</div><!-- /page-grid -->
+
+<script>
+let polling = null;
+let lastOutputCount = {sentinel:0, guardian:0, counsel:0, remediate:0, packager:0};
+
+const AGENTS = ['sentinel','guardian','counsel','remediate','packager'];
+
+async function startScan() {
+  const btn  = document.getElementById('scan-btn');
+  const mode = document.getElementById('scan-mode').value;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Running...';
+
+  document.getElementById('speed-banner').classList.remove('visible');
+  AGENTS.forEach(resetCard);
+
+  await fetch('https://nexclinicalmind-api-266546549476.us-central1.run.app/api/reset', {method:'POST'});
+  await fetch('https://nexclinicalmind-api-266546549476.us-central1.run.app/api/start', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({mode})
+  });
+
+  lastOutputCount = {sentinel:0, guardian:0, counsel:0, remediate:0, packager:0};
+  polling = setInterval(pollState, 800);
+}
+
+async function pollState() {
+  try {
+    const state = await (await fetch('https://nexclinicalmind-api-266546549476.us-central1.run.app/api/state')).json();
+    updateDashboard(state);
+    if (state.status === 'complete') {
+      clearInterval(polling);
+      const btn = document.getElementById('scan-btn');
+      btn.disabled = false;
+      btn.innerHTML = '↺ Run Again';
+    }
+  } catch(e) { console.error(e); }
+}
+
+function resetCard(name) {
+  document.getElementById('card-' + name).className    = 'agent-card';
+  document.getElementById('header-' + name).className  = 'agent-header';
+  document.getElementById('status-' + name).className  = 'agent-status idle';
+  document.getElementById('status-' + name).textContent = 'IDLE';
+  document.getElementById('warn-' + name).className    = 'warn-pill';
+  document.getElementById('time-' + name).className    = 'agent-time';
+  document.getElementById('output-' + name).innerHTML  = '<span class="idle-text">Waiting...</span>';
+}
+
+function failCount(agent) {
+  if (!agent.output) return 0;
+  return agent.output.filter(l => l.type === 'error').length;
+}
+
+function applyCardState(name, agentStatus, fails) {
+  const card   = document.getElementById('card-' + name);
+  const header = document.getElementById('header-' + name);
+  const badge  = document.getElementById('status-' + name);
+  const warn   = document.getElementById('warn-' + name);
+  const warnTxt= document.getElementById('warn-text-' + name);
+
+  if (agentStatus === 'running') {
+    card.className   = 'agent-card running';
+    header.className = 'agent-header running-hdr';
+    badge.className  = 'agent-status running';
+    badge.textContent = '⚡ RUNNING';
+    warn.className   = 'warn-pill';
+  } else if (agentStatus === 'done') {
+    if (fails > 0) {
+      card.className    = 'agent-card done-warn';
+      header.className  = 'agent-header warn-hdr';
+      badge.className   = 'agent-status done-ok';
+      badge.textContent = '✓ DONE';
+      warnTxt.textContent = `${fails} issue${fails > 1 ? 's' : ''}`;
+      warn.className    = 'warn-pill visible';
+    } else {
+      card.className    = 'agent-card done-ok';
+      header.className  = 'agent-header ok-hdr';
+      badge.className   = 'agent-status done-ok';
+      badge.textContent = '✓ DONE';
+      warn.className    = 'warn-pill';
+    }
+  }
+}
+
+function updateDashboard(state) {
+  const s = state.summary;
+
+  // Status bar
+  const dot = document.getElementById('status-dot');
+  dot.className = 'status-dot ' + (state.status==='running' ? 'running' : state.status==='complete' ? 'complete' : '');
+  document.getElementById('status-text').textContent =
+    state.status==='running'  ? 'Autonomous compliance scan in progress...' :
+    state.status==='complete' ? 'Scan complete — all agents finished' : 'Ready';
+
+  // Stats
+  document.getElementById('stat-pipelines').textContent  = s.pipelines_scanned || '—';
+  document.getElementById('stat-failures').textContent   = s.failures_detected  || '—';
+  document.getElementById('stat-violations').textContent = s.violations_found !== undefined ? s.violations_found : '—';
+  const subStat = document.getElementById('stat-submission');
+  subStat.textContent = s.submission_status || '—';
+  subStat.className = 'stat-val ' +
+    (s.submission_status === 'ON HOLD' ? 'red' : s.submission_status === 'READY' ? 'green' : '');
+
+  // Speed banner
+  if (s.total_elapsed > 0) {
+    document.getElementById('speed-detect').textContent = s.sentinel_elapsed + 's';
+    document.getElementById('speed-total').textContent  = s.total_elapsed + 's';
+    document.getElementById('speed-banner').classList.add('visible');
+  }
+
+  // Submission banner
+  const banner = document.getElementById('submission-banner');
+  const tag    = document.getElementById('submission-tag');
+  if (s.submission_status === 'ON HOLD') {
+    banner.className = 'submission-banner hold';
+    banner.querySelector('h3').textContent = '⏸ On Hold';
+    banner.querySelector('p').textContent  = `${s.violations_found} violation(s) require human sign-off`;
+    tag.className = 'sub-tag hold'; tag.textContent = 'ON HOLD';
+  } else if (s.submission_status === 'READY') {
+    banner.className = 'submission-banner ready';
+    banner.querySelector('h3').textContent = '✅ Ready to Submit';
+    banner.querySelector('p').textContent  = 'All compliance checks passed';
+    tag.className = 'sub-tag ready'; tag.textContent = 'READY';
+  }
+
+  // Agents
+  AGENTS.forEach(name => {
+    const agent  = state.agents[name];
+    const output = document.getElementById('output-' + name);
+    const timeEl = document.getElementById('time-' + name);
+    const fails  = failCount(agent);
+
+    applyCardState(name, agent.status, fails);
+
+    if (agent.elapsed > 0) {
+      timeEl.textContent = '⏱ ' + agent.elapsed + 's';
+      timeEl.classList.add('visible');
+    }
+
+    const newLines = agent.output.slice(lastOutputCount[name]);
+    if (newLines.length > 0) {
+      if (lastOutputCount[name] === 0) output.innerHTML = '';
+      newLines.forEach(line => {
+        const div = document.createElement('div');
+        div.className = 'out-line ' + line.type;
+        div.textContent = line.text;
+        output.appendChild(div);
+      });
+      output.scrollTop = output.scrollHeight;
+      lastOutputCount[name] = agent.output.length;
+    }
+  });
+
+  // Audit log — compact (no detail column, fits sidebar)
+  const logs = state.audit_log;
+  document.getElementById('audit-count').textContent = `${logs.length} entries`;
+  if (logs.length > 0) {
+    document.getElementById('audit-tbody').innerHTML = logs.slice().reverse().map(l => `
+      <tr>
+        <td style="color:var(--muted);white-space:nowrap">${l.timestamp}</td>
+        <td style="color:var(--teal);font-weight:600;white-space:nowrap">${l.agent}</td>
+        <td style="color:var(--text);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${l.action}">${l.action}</td>
+        <td><span class="sev ${l.severity}">${l.severity}</span></td>
+      </tr>`).join('');
+  }
+}
+</script>
+</body>
+</html>
