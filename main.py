@@ -1,5 +1,8 @@
+import sys
 import time
 from dotenv import load_dotenv
+
+sys.stdout.reconfigure(encoding="utf-8")
 load_dotenv()
 
 from agents.sentinel  import run_sentinel

@@ -4,15 +4,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Use Vertex AI with your GCP project credits
-client = genai.Client(
-    vertexai=True,
-    project=os.getenv("GOOGLE_CLOUD_PROJECT"),
-    location=os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-)
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 def ask_gemini(prompt: str) -> str:
-    """Send a prompt to Gemini 2.0 Flash via Vertex AI."""
+    """Send a prompt to Gemini 2.0 Flash via Gemini API."""
     try:
         response = client.models.generate_content(
             model="gemini-2.5-flash",
